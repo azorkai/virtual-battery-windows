@@ -1,0 +1,71 @@
+name: Build
+
+on:
+  push:
+    branches: [main]
+    tags: ['v*']
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: windows-2022
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build
+        shell: pwsh
+        run: ./build.ps1
+      - uses: actions/upload-artifact@v4
+        with:
+          name: VirtualBatterySetup
+          path: |
+            out/VirtualBatterySetup.exe
+            out/VirtualBatterySetup.exe.sha256
+
+  test:
+    needs: build
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [windows-2022, windows-2025]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: VirtualBatterySetup
+          path: out
+      - name: Install, exercise and remove
+        shell: powershell
+        run: ./tests/integration.ps1
+
+  release:
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: test
+    runs-on: windows-2022
+    permissions:
+      contents: write
+      id-token: write
+      attestations: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: VirtualBatterySetup
+          path: out
+      - uses: actions/attest-build-provenance@v2
+        with:
+          subject-path: out/VirtualBatterySetup.exe
+      - name: Publish
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: >
+          gh release create $env:GITHUB_REF_NAME
+          out/VirtualBatterySetup.exe out/VirtualBatterySetup.exe.sha256
+          --title "Virtual Battery $env:GITHUB_REF_NAME"
+          --notes-file RELEASE_NOTES.md

@@ -1,0 +1,76 @@
+;
+; Virtual Battery - user-mode HID battery
+; The kernel components used here (mshidumdf.sys, WUDFRd.sys) ship with Windows.
+;
+[Version]
+Signature   = "$Windows NT$"
+Class       = HIDClass
+ClassGuid   = {745a17a0-74d3-11d0-b6fe-00a0c90f57da}
+Provider    = %Provider%
+CatalogFile = VirtualBattery.cat
+DriverVer   = 11/24/2026,1.0.0.0
+PnpLockdown = 1
+
+[DestinationDirs]
+DefaultDestDir = 13
+
+[SourceDisksNames]
+1 = %Disk%
+
+[SourceDisksFiles]
+VirtualBattery.dll = 1
+
+[Manufacturer]
+%Provider% = Models, NTamd64.10.0...19041
+
+[Models.NTamd64.10.0...19041]
+%DeviceDesc% = Install, Root\VirtualBatteryHid
+
+[Install.NT]
+CopyFiles = DriverFiles
+
+[DriverFiles]
+VirtualBattery.dll
+
+[Install.NT.HW]
+AddReg = HardwareReg
+
+[HardwareReg]
+HKR,,"LowerFilters",0x00010008,"WUDFRd"
+
+[Install.NT.Services]
+AddService = WUDFRd, 0x000001f8, WudfRdService
+AddService = mshidumdf, 0x000001fa, MsHidUmdfService
+
+[WudfRdService]
+DisplayName   = %WudfRdName%
+ServiceType   = 1
+StartType     = 3
+ErrorControl  = 1
+ServiceBinary = %12%\WUDFRd.sys
+
+[MsHidUmdfService]
+DisplayName   = %MsHidUmdfName%
+ServiceType   = 1
+StartType     = 3
+ErrorControl  = 1
+ServiceBinary = %12%\mshidumdf.sys
+
+[Install.NT.Wdf]
+UmdfService                = VirtualBattery, UmdfInstall
+UmdfServiceOrder           = VirtualBattery
+UmdfKernelModeClientPolicy = AllowKernelModeClients
+UmdfFileObjectPolicy       = AllowNullAndUnknownFileObjects
+UmdfMethodNeitherAction    = Copy
+UmdfFsContextUsePolicy     = CanUseFsContext2
+
+[UmdfInstall]
+UmdfLibraryVersion = 2.15.0
+ServiceBinary      = %13%\VirtualBattery.dll
+
+[Strings]
+Provider      = "Virtual Battery"
+Disk          = "Virtual Battery Installation Disk"
+DeviceDesc    = "Virtual Battery"
+WudfRdName    = "Windows Driver Foundation - User-mode Driver Framework Reflector"
+MsHidUmdfName = "Pass-through HID to UMDF Driver"
